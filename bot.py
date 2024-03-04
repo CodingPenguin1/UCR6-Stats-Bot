@@ -52,6 +52,11 @@ async def on_message(message):
         for output in outputs:
             await message.reply(output)
 
+    # Delete all files in output/
+    for file in os.listdir('output'):
+        print(f'Deleting {os.path.join("output", file)}...')
+        os.remove(os.path.join(cwd, 'output', file))
+
 
 def unpack_file(file):
     if not file.endswith('.zip'):
@@ -85,10 +90,10 @@ def parse_replays():
             print(f'Deleting {os.path.join(root, file)}...')
             os.remove(os.path.join(cwd, root, file))
 
-    # TODO: deleting directories has a file not found error
+    # TODO: deleting directories doesn't actually work
     # for _dir in os.listdir('cache'):
-    #     print(f'Deleting {os.path.join(root, _dir)}...')
-    #     os.rmdir(os.path.join(cwd, root, _dir))
+    #     print(f'Deleting {os.path.join(root)}...')
+    #     os.rmdir(os.path.join(cwd, root))
 
 def parse_jsons(message):
     # sourcery skip: hoist-statement-from-loop, move-assign-in-block
