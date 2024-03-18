@@ -81,7 +81,8 @@ def parse_replays():
         for _dir in dirs:
             if _dir.startswith('Match-'):
                 print(f'Processing {os.path.join(root, _dir)}...')
-                command = f'{r6_dissect_exe} "{os.path.join(cwd, root, _dir)}" -x {os.path.join(cwd, 'output', _dir)}.json'
+                command = f'{r6_dissect_exe} "{os.path.join(cwd, root, _dir)}" -o {os.path.join(cwd, "output", _dir)}.json'
+                print(f'Running {command}')
                 subprocess.run(command, shell=True, capture_output=True, text=True)
 
     # Remove all files and directories in cache/
@@ -91,9 +92,9 @@ def parse_replays():
             os.remove(os.path.join(cwd, root, file))
 
     # TODO: deleting directories doesn't actually work
-    # for _dir in os.listdir('cache'):
-    #     print(f'Deleting {os.path.join(root)}...')
-    #     os.rmdir(os.path.join(cwd, root))
+    for _dir in os.listdir('cache'):
+        print(f'Deleting {os.path.join(root)}...')
+        os.rmdir(os.path.join(cwd, root))
 
 def parse_jsons(message):
     # sourcery skip: hoist-statement-from-loop, move-assign-in-block
@@ -102,88 +103,91 @@ def parse_jsons(message):
     outputs = []
     for file in os.listdir('output'):
         print(f'Parsing {os.path.join("output", file)}...')
-        data = json.load(open(os.path.join('output', file)))
+        try:
+            data = json.load(open(os.path.join('output', file)))
 
-        output_text = ''
+            output_text = ''
 
-        # Figure out which team is us
-        teams = data['rounds'][0]['teams']
-        uc_names = ['uc', 'cincinnati', 'cinci', 'cincy']
-        our_team_idx = -1
-        for name in uc_names:
-            if name in teams[0]['name'].lower():
-                our_team_idx = 0
-                break
-            elif name in teams[1]['name'].lower():
-                our_team_idx = 1
-                break
-        if our_team_idx == -1:
-            return "Error: couldn't determine which team is UC"
-        output_text += f'### {teams[our_team_idx]["name"]} vs {teams[1 - our_team_idx]["name"]}\n'
-
-        # Get date
-        output_text += f'Date: {data['rounds'][0]['timestamp'].split('T')[0]}\n'
-
-        # Get map
-        output_text += f'Map: {data['rounds'][0]['map']['name'].lower().capitalize()}\n'
-
-        # Figure out if we're attacking or defending first
-        output_text += f'We {teams[our_team_idx]['role'].lower()} first\n'
-
-        # If OT, figure out which side we're on first in OT
-        if len(data['rounds']) > 12:
-            output_text += f'OT we {data['rounds'][12]['teams'][our_team_idx]['role'].lower()} first\n'
-
-        # Parse result of each round
-        # TODO: If all players leave, don't count the round
-        round_results = {'attack': {}, 'defense': {}}
-        for _round in data['rounds']:
-
-            site = _round['site']
-            side = _round['teams'][our_team_idx]['role'].lower()
-            win = _round['teams'][our_team_idx]['won']
-            if site not in round_results[side]:
-                round_results[side][site] = {'wins': 0, 'losses': 0}
-            if win:
-                round_results[side][site]['wins'] += 1
-            else:
-                round_results[side][site]['losses'] += 1
-
-        # Calculate overall win-loss round record
-        wins, losses = 0, 0
-        for key, value in round_results.items():
-            for site in value:
-                wins += round_results[key][site]['wins']
-                losses += round_results[key][site]['losses']
-        output_text += f'Overall record: {wins}-{losses}\n```\n'
-
-        for key, value_ in round_results.items():
-            output_text += f'{key.capitalize()} results:\n'
-            for site in sorted(value_, reverse=True):
-                output_text += f'  {site}: {round_results[key][site]['wins']}-{round_results[key][site]['losses']}\n'
-
-        headers = ['Player', 'K', 'D', 'A']
-        players = []
-        kda_table = []
-        for i in range(len(data['stats'])):
-            player = data['stats'][i]
-            for player_info in data['rounds'][0]['players']:
-                if player_info['username'] == player['username']:
-                    if player_info['teamIndex'] == our_team_idx:
-                        players.append(player)
+            # Figure out which team is us
+            teams = data['rounds'][0]['teams']
+            uc_names = ['uc', 'cincinnati', 'cinci', 'cincy']
+            our_team_idx = -1
+            for name in uc_names:
+                if name in teams[0]['name'].lower():
+                    our_team_idx = 0
                     break
-        kda_table.extend(
-            [
-                player['username'],
-                player['kills'],
-                player['deaths'],
-                player['assists'],
-            ]
-            for player in players
-        )
-        output_text += '```\n```\n' + tabulate.tabulate(kda_table, headers=headers) + '```\n'
-        output_text += '_Please note that tracking assists is not currently supported, please refer to the scoreboard screenshot to fill that information_\n'
-        outputs.append(output_text)
+                elif name in teams[1]['name'].lower():
+                    our_team_idx = 1
+                    break
+            if our_team_idx == -1:
+                return "Error: couldn't determine which team is UC"
+            output_text += f'### {teams[our_team_idx]["name"]} vs {teams[1 - our_team_idx]["name"]}\n'
+
+            # Get date
+            output_text += f'Date: {data["rounds"][0]["timestamp"].split("T")[0]}\n'
+
+            # Get map
+            output_text += f'Map: {data["rounds"][0]["map"]["name"].lower().capitalize()}\n'
+
+            # Figure out if we're attacking or defending first
+            output_text += f'We {teams[our_team_idx]["role"].lower()} first\n'
+
+            # If OT, figure out which side we're on first in OT
+            if len(data['rounds']) > 12:
+                output_text += f'OT we {data["rounds"][12]["teams"][our_team_idx]["role"].lower()} first\n'
+
+            # Parse result of each round
+            # TODO: If all players leave, don't count the round
+            round_results = {'attack': {}, 'defense': {}}
+            for _round in data['rounds']:
+
+                site = _round['site']
+                side = _round['teams'][our_team_idx]['role'].lower()
+                win = _round['teams'][our_team_idx]['won']
+                if site not in round_results[side]:
+                    round_results[side][site] = {'wins': 0, 'losses': 0}
+                if win:
+                    round_results[side][site]['wins'] += 1
+                else:
+                    round_results[side][site]['losses'] += 1
+
+            # Calculate overall win-loss round record
+            wins, losses = 0, 0
+            for key, value in round_results.items():
+                for site in value:
+                    wins += round_results[key][site]['wins']
+                    losses += round_results[key][site]['losses']
+            output_text += f'Overall record: {wins}-{losses}\n```\n'
+
+            for key, value_ in round_results.items():
+                output_text += f'{key.capitalize()} results:\n'
+                for site in sorted(value_, reverse=True):
+                    output_text += f'  {site}: {round_results[key][site]["wins"]}-{round_results[key][site]["losses"]}\n'
+
+            headers = ['Player', 'K', 'D', 'A']
+            players = []
+            kda_table = []
+            for i in range(len(data['stats'])):
+                player = data['stats'][i]
+                for player_info in data['rounds'][0]['players']:
+                    if player_info['username'] == player['username']:
+                        if player_info['teamIndex'] == our_team_idx:
+                            players.append(player)
+                        break
+            kda_table.extend(
+                [
+                    player['username'],
+                    player['kills'],
+                    player['deaths'],
+                    player['assists'],
+                ]
+                for player in players
+            )
+            output_text += '```\n```\n' + tabulate.tabulate(kda_table, headers=headers) + '```\n'
+            output_text += '_Please note that an error exists when tracking round wins for rounds where the defuser is planted. See [r6-dissect Issue 86](https://github.com/redraskal/r6-dissect/issues/86) for more information._\n'
+            outputs.append(output_text)
+        except json.decoder.JSONDecodeError:
+            pass
 
     return outputs
 
