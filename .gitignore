@@ -1,7 +1,8 @@
-.env
-cache/*
+*.env
+data/*
 input/*
-output/*
+*.json
+src/r6-dissect/*
 
 
 
