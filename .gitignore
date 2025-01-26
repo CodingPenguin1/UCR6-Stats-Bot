@@ -2,7 +2,9 @@
 data/*
 input/*
 *.json
-src/r6-dissect/*
+src/decoder/r6-dissect/*
+*.rec
+*.zip
 
 
 
