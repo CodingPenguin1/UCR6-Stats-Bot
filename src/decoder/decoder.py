@@ -259,6 +259,12 @@ def generate_kill_table(data_dir: Path = DATA_DIR):
                     return team_dicts[team_index]["role"]
             return None
 
+        def find_trade_kill(kill: dict, kills: list[dict]):
+            """Trade is defined as someone who kills someone who just got a kill within 10s of the first kill."""
+            for other_kill in kills:
+                if other_kill["killer_id"] == kill["victim_id"] and other_kill["time_seconds"] - kill["time_seconds"] <= -10:
+                    return True
+            return False
 
         with open(match_json_path, "r") as f:
             match_json = json.load(f)
@@ -284,6 +290,7 @@ def generate_kill_table(data_dir: Path = DATA_DIR):
                     "victim_id": victim_player_id,
                     "headshot": event["headshot"],
                     "time": event["time"],
+                    "time_seconds": event["timeInSeconds"],
                     "map": round["map"]["name"],
                     "killer_operator": get_operator_from_player_id(round["players"], killer_player_id),
                     "victim_operator": get_operator_from_player_id(round["players"], victim_player_id),
@@ -291,10 +298,8 @@ def generate_kill_table(data_dir: Path = DATA_DIR):
                     "victim_side": get_player_side_from_player_id(round["players"], round["teams"], victim_player_id),
                     "killer_spawn": get_spawn_location_from_player_id(round["players"], killer_player_id),
                     "victim_spawn": get_spawn_location_from_player_id(round["players"], victim_player_id),
-                    # "trade": False,
-                    "trade": "NOT YET IMPLEMENTED",
                 }
-                # TODO: calculate trade
+                kill["trade"] = find_trade_kill(kill, kills)
                 kills.append(kill)
 
         return pd.DataFrame(kills)
