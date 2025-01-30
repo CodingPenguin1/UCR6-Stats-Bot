@@ -5,6 +5,7 @@ input/*
 src/decoder/r6-dissect/*
 *.rec
 *.zip
+plots/
 
 
 
