@@ -592,8 +592,9 @@ def decode_matches(data_dir: Path = DATA_DIR, decoder_path: Path = DECODER_PATH)
 
     # Step 4: Post-processing for manual entry fields
     check_for_unentered_games(data_dir)
-    update_op_bans(data_dir)
     update_map_bans(data_dir)
+    update_op_bans(data_dir)
+    print(f"Reminder to set op bans:\n{DATA_DIR / '3_tables/op_bans.csv'}")
 
 
 if __name__ == "__main__":
