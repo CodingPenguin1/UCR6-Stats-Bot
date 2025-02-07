@@ -1,19 +1,22 @@
+from pathlib import Path
+from typing import Iterable
+
+import matplotlib.ticker as ticker
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from matplotlib import pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+
 from utils import (
-    get_team_name_from_id,
-    get_player_ids_from_team_id,
-    player_is_on_team,
-    get_player_name_from_id,
     KILL_DATA_CSV,
     ROUND_DATA_CSV,
+    get_player_ids_from_team_id,
+    get_player_name_from_id,
+    get_team_id_from_name,
+    get_team_name_from_id,
+    player_is_on_team,
 )
-import pandas as pd
-from matplotlib import pyplot as plt
-from pathlib import Path
-import numpy as np
-import seaborn as sns
-import matplotlib.ticker as ticker
-from typing import Iterable
-from matplotlib.colors import LinearSegmentedColormap
 
 PLOTS_DIR = Path("/home/rjslater/Documents/Projects/UCR6-Stats-Bot/plots")
 
@@ -480,11 +483,12 @@ def plot_team_engagement_timings(team_id: int, map_name: str | None = None) -> p
 
 
 if __name__ == "__main__":
-    team_id = 3
+    team_id = get_team_id_from_name("UC Black")
+    team_id = get_team_id_from_name("CINCINNATI")
     for player_id in get_player_ids_from_team_id(team_id):
         player_name = get_player_name_from_id(player_id)
-        #     fig = plot_player_engagement_timing(player_id)
-        #     fig.savefig(PLOTS_DIR / f"engagement_timing-{player_name}.png")
+        fig = plot_player_engagement_timing(player_id)
+        fig.savefig(PLOTS_DIR / f"engagement_timing-{player_name}.png")
 
         death_counts, traded_death_rate, maps, time_bins = get_traded_death_engagement_data(
             player_id, split_atk_def=True
@@ -498,17 +502,17 @@ if __name__ == "__main__":
             legend_text="Color Legend:\nBlue = High trade rate\nGray = Mid trade rate\nRed = Low trade rate\n\nCircles: # deaths",
         ).savefig(PLOTS_DIR / f"traded_death_rates-{player_name}.png")
 
-    #     engagement_counts, engagement_winrate, maps, time_bins = get_engagement_data(
-    #         player_id, split_atk_def=True
-    #     )
-    #     fig = plot_engagement_efficiency(
-    #         engagement_counts,
-    #         engagement_winrate,
-    #         maps,
-    #         time_bins,
-    #         title=f"Engagement Efficiency - {player_name}",
-    #     )
-    #     fig.savefig(PLOTS_DIR / f"engagement_efficiency-{player_name}.png")
+        engagement_counts, engagement_winrate, maps, time_bins = get_engagement_data(
+            player_id, split_atk_def=True
+        )
+        fig = plot_engagement_efficiency(
+            engagement_counts,
+            engagement_winrate,
+            maps,
+            time_bins,
+            title=f"Engagement Efficiency - {player_name}",
+        )
+        fig.savefig(PLOTS_DIR / f"engagement_efficiency-{player_name}.png")
 
-    # team_name = get_team_name_from_id(team_id)
-    # plot_team_engagement_timings(team_id).savefig(PLOTS_DIR / f"engagement_timing-{team_name}.png")
+    team_name = get_team_name_from_id(team_id)
+    plot_team_engagement_timings(team_id).savefig(PLOTS_DIR / f"engagement_timing-{team_name}.png")

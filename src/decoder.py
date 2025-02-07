@@ -211,7 +211,7 @@ def generate_players_and_teams_tables(data_dir: Path = DATA_DIR):
 
     # Initial player table
     player_info_df = pd.DataFrame()
-    for match_json_path in Path(data_dir / "2_decoded_replays/").glob("*.json"):
+    for match_json_path in sorted(Path(data_dir / "2_decoded_replays/").glob("*.json")):
         player_info_df = pd.concat(
             (player_info_df, get_players(match_json_path)), ignore_index=True
         )
@@ -430,19 +430,27 @@ def update_op_bans(data_dir: Path = DATA_DIR):
     op_bans_df = pd.read_csv(op_bans_csv)
     for match_json in (data_dir / "2_decoded_replays").glob("*.json"):
         match_id = match_json.stem
-        if match_id in list(op_bans_df["match_id"]):
-            continue
         with open(match_json) as f:
             match_dict = json.load(f)
             team_0_id, team_1_id = get_team_ids_from_round_dict(match_dict["rounds"][0])
-        match_data_dict = {
-            "game_id": [get_game_id_from_match_id(match_id)],
-            "match_id": [match_id],
-            "map": match_dict["rounds"][0]["map"]["name"],
-            "team_0_id": [team_0_id],
-            "team_1_id": [team_1_id],
-        }
-        op_bans_df = pd.concat((op_bans_df, pd.DataFrame(match_data_dict)))
+            op_bans_df.loc[(op_bans_df["match_id"] == match_id), ["team_0_id", "team_1_id"]] = (
+                team_0_id,
+                team_1_id,
+            )
+
+        # If existing match, just update team ids
+        if match_id in list(op_bans_df["match_id"]):
+            pass
+        # If new match, generate new row
+        else:
+            match_data_dict = {
+                "game_id": [get_game_id_from_match_id(match_id)],
+                "match_id": [match_id],
+                "map": match_dict["rounds"][0]["map"]["name"],
+                "team_0_id": [team_0_id],
+                "team_1_id": [team_1_id],
+            }
+            op_bans_df = pd.concat((op_bans_df, pd.DataFrame(match_data_dict)))
     op_bans_df = op_bans_df.sort_values(by=["game_id", "match_id"])
     op_bans_df.to_csv(op_bans_csv, index=False)
 
@@ -546,20 +554,44 @@ def check_for_unentered_games(data_dir: Path = DATA_DIR):
             existing_match_ids.append(game_match_ids.replace("('", "").replace("')", ""))
 
     # Find if there are any replays not added to game info csv
-    missing_count = 0
+    missing_replays = []
     for json_file in sorted((data_dir / "2_decoded_replays").glob("*.json")):
         if json_file.stem not in existing_match_ids:
-            if missing_count == 0:
+            if len(missing_replays) == 0:
                 print("Enter game information for the following replays:")
             print(json_file.stem)
-            missing_count += 1
-    if missing_count:
-        input()
+            missing_replays.append(json_file.stem)
+    if missing_replays:
+        game_type = ""
+        while True:
+            response = input("Is this a match or a scrim? ").lower()
+            if response.startswith("m"):
+                game_type = "match"
+                break
+            elif response.startswith("s"):
+                game_type = "scrim"
+                break
+        league, best_of = "", ""
+        if game_type == "match":
+            league = input("What league? ")
+            best_of = "Bo" + input("Best of 1, 3, or 5? ").strip()
+        game_id = max(game_info_df["game_id"]) + 1
+        game_info = [
+            {
+                "game_id": game_id,
+                "match_ids": tuple(missing_replays),
+                "game_type": game_type,
+                "league": league,
+                "format": best_of,
+            }
+        ]
+        game_info_df = pd.concat((game_info_df, pd.DataFrame(game_info)))
+        game_info_df.to_csv(data_dir / "3_tables/game_info.csv", index=False)
 
 
 def decode_matches(data_dir: Path = DATA_DIR, decoder_path: Path = DECODER_PATH):
     # Step 1: Extract the match zips
-    zip_files = list((data_dir / "0_replay_zips").iterdir())
+    zip_files = list((data_dir / "0_replay_zips").glob("*.zip"))
     for match_zip in track(zip_files, description="Extracting match zips", total=len(zip_files)):
         _extract_match_zip(match_zip)
 

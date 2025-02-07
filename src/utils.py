@@ -13,6 +13,14 @@ ROUND_DATA_CSV = Path(
 TEAM_INFO_CSV = Path("/home/rjslater/Documents/Projects/UCR6-Stats-Bot/data/3_tables/teams.csv")
 
 
+def get_team_id_from_name(team_name: str) -> int | None:
+    df = pd.read_csv(TEAM_INFO_CSV)
+    df = df[df["team_name"] == team_name]
+    if len(df):
+        return df.iloc[0]["team_id"]
+    return None
+
+
 def get_game_id_from_match_id(match_id: str) -> int | None:
     df = pd.read_csv(GAME_INFO_CSV)
     for _, row in df.iterrows():
