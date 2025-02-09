@@ -484,7 +484,8 @@ def plot_team_engagement_timings(team_id: int, map_name: str | None = None) -> p
 
 if __name__ == "__main__":
     team_id = get_team_id_from_name("UC Black")
-    team_id = get_team_id_from_name("CINCINNATI")
+    # team_id = get_team_id_from_name("CINCINNATI")
+
     for player_id in get_player_ids_from_team_id(team_id):
         player_name = get_player_name_from_id(player_id)
         fig = plot_player_engagement_timing(player_id)

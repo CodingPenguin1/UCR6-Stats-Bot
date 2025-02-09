@@ -18,7 +18,9 @@ from utils import (
 
 
 DATA_DIR = Path("/home/rjslater/Documents/Projects/UCR6-Stats-Bot/data")
-DECODER_PATH = Path("/home/rjslater/Documents/Projects/UCR6-Stats-Bot/src/r6-dissect/r6-dissect")
+DECODER_PATH = Path(
+    "/home/rjslater/Documents/Projects/UCR6-Stats-Bot/src/r6-dissect/r6-dissect"
+)
 
 
 def _memory_available():
@@ -41,7 +43,10 @@ def _extract_match_zip(match_zip: Path, data_dir: Path = DATA_DIR):
 
 def _decode_match_folder(match_dir: Path, decoder_path: Path = DECODER_PATH):
     # If already decoded, skip
-    processed_files = [f"{file.stem}.json" for file in (DATA_DIR / "2_decoded_replays").iterdir()]
+    processed_files = [
+        f"{file.stem}.json"
+        for file in (DATA_DIR / "2_decoded_replays").iterdir()
+    ]
     if f"{match_dir.stem}.json" in processed_files:
         return
 
@@ -65,7 +70,13 @@ def generate_players_and_teams_tables(data_dir: Path = DATA_DIR):
             for player in round["players"]:
                 team_name = (
                     teams[player["teamIndex"]]
-                    if teams[player["teamIndex"]] not in {"YOUR TEAM", "OPPONENTS"}
+                    if teams[player["teamIndex"]]
+                    not in {
+                        "YOUR TEAM",
+                        "OPPONENTS",
+                        "RAVEN SHIELD",
+                        "ROGUE SPEAR",
+                    }
                     else ""
                 )
                 player_dict = {
@@ -74,7 +85,9 @@ def generate_players_and_teams_tables(data_dir: Path = DATA_DIR):
                     "team_name": team_name,
                 }
                 # If player_dict[id] not in any dict in players, add this new player
-                if any(player_dict["player_id"] == p["player_id"] for p in players):
+                if any(
+                    player_dict["player_id"] == p["player_id"] for p in players
+                ):
                     continue
                 else:
                     players.append(player_dict)
@@ -88,7 +101,17 @@ def generate_players_and_teams_tables(data_dir: Path = DATA_DIR):
         teams = []
         round = match_json["rounds"][0]
         for team_index, team in enumerate(round["teams"]):
-            team_name = team["name"] if team["name"] not in {"YOUR TEAM", "OPPONENTS"} else ""
+            team_name = (
+                team["name"]
+                if team["name"]
+                not in {
+                    "YOUR TEAM",
+                    "OPPONENTS",
+                    "RAVEN SHIELD",
+                    "ROGUE SPEAR",
+                }
+                else ""
+            )
             players = sorted(
                 [
                     player["profileID"]
@@ -113,8 +136,12 @@ def generate_players_and_teams_tables(data_dir: Path = DATA_DIR):
 
         def get_player_name(player_id):
             """Look up the player name from the DataFrame using the player ID."""
-            result = player_info_df.loc[player_info_df["player_id"] == player_id, "player_name"]
-            return result.iloc[0] if not result.empty else f"Unknown({player_id})"
+            result = player_info_df.loc[
+                player_info_df["player_id"] == player_id, "player_name"
+            ]
+            return (
+                result.iloc[0] if not result.empty else f"Unknown({player_id})"
+            )
 
         unique_teams = []
 
@@ -134,7 +161,10 @@ def generate_players_and_teams_tables(data_dir: Path = DATA_DIR):
             if not team_matched:
                 # Add a new unique team
                 unique_teams.append(
-                    {"name_count": Counter([team["team_name"]]), "player_ids": team["player_ids"]}
+                    {
+                        "name_count": Counter([team["team_name"]]),
+                        "player_ids": team["player_ids"],
+                    }
                 )
 
         # Finalize the unique teams with their most frequent names
@@ -150,7 +180,8 @@ def generate_players_and_teams_tables(data_dir: Path = DATA_DIR):
             if not most_frequent_name.strip():
                 # Convert player IDs to names and count tags
                 player_names = [
-                    get_player_name(player_id) for player_id in unique_team["player_ids"]
+                    get_player_name(player_id)
+                    for player_id in unique_team["player_ids"]
                 ]
                 player_tags = [
                     extract_tag(player_name)
@@ -158,9 +189,13 @@ def generate_players_and_teams_tables(data_dir: Path = DATA_DIR):
                     if extract_tag(player_name)
                 ]
                 tag_counts = Counter(player_tags)
-                guessed_name = max(tag_counts, key=tag_counts.get, default="").strip()
+                guessed_name = max(
+                    tag_counts, key=tag_counts.get, default=""
+                ).strip()
 
-                most_frequent_name = f"{guessed_name}" if guessed_name else "Unknown Team"
+                most_frequent_name = (
+                    f"{guessed_name}" if guessed_name else "Unknown Team"
+                )
 
             unique_team["team_name"] = most_frequent_name
             del unique_team["name_count"]  # Clean up temporary counter
@@ -185,18 +220,23 @@ def generate_players_and_teams_tables(data_dir: Path = DATA_DIR):
                 else:
                     player_teams_map[player_id] = [team_id]
 
-        player_info_df["team_ids"] = player_info_df["player_id"].map(player_teams_map)
+        player_info_df["team_ids"] = player_info_df["player_id"].map(
+            player_teams_map
+        )
         # ! Is this line needed?
         # player_info_df["team_ids"] = player_info_df["team_ids"].apply(lambda x: [] if pd.isna(x) else x)
 
-    def update_players_with_all_names(player_info_df: pd.DataFrame, data_dir: Path):
+    def update_players_with_all_names(
+        player_info_df: pd.DataFrame, data_dir: Path
+    ):
         """Iterate over all matches and find all usernames associated with each player ID."""
         for i, row in player_info_df.iterrows():
             player_id = row["player_id"]
             player_names = []
             # Sorted reverse to make sure most recent name is first in list
             for match_json_path in sorted(
-                Path(data_dir / "2_decoded_replays").glob("*.json"), reverse=True
+                Path(data_dir / "2_decoded_replays").glob("*.json"),
+                reverse=True,
             ):
                 with open(match_json_path) as f:
                     match_json = json.load(f)
@@ -207,11 +247,15 @@ def generate_players_and_teams_tables(data_dir: Path = DATA_DIR):
                     ):
                         player_names.append(player_dict["username"])
             player_info_df.loc[i, "player_name"] = player_names
-        player_info_df.rename(columns={"player_name": "player_names"}, inplace=True)
+        player_info_df.rename(
+            columns={"player_name": "player_names"}, inplace=True
+        )
 
     # Initial player table
     player_info_df = pd.DataFrame()
-    for match_json_path in sorted(Path(data_dir / "2_decoded_replays/").glob("*.json")):
+    for match_json_path in sorted(
+        Path(data_dir / "2_decoded_replays/").glob("*.json")
+    ):
         player_info_df = pd.concat(
             (player_info_df, get_players(match_json_path)), ignore_index=True
         )
@@ -223,7 +267,9 @@ def generate_players_and_teams_tables(data_dir: Path = DATA_DIR):
     for match_json_path in Path(data_dir / "2_decoded_replays").rglob("*.json"):
         team_instances.extend(get_teams(match_json_path))
     unique_teams = condense_teams(team_instances, get_players(match_json_path))
-    team_info_df = pd.DataFrame(unique_teams, columns=["team_id", "team_name", "player_ids"])
+    team_info_df = pd.DataFrame(
+        unique_teams, columns=["team_id", "team_name", "player_ids"]
+    )
 
     # Update player table with all names and team info
     update_players_with_all_names(player_info_df, data_dir)
@@ -256,10 +302,14 @@ def generate_rounds_table(data_dir: Path = DATA_DIR):
 
             # Figure out team IDs from rosters
             team_0_player_ids = [
-                player["profileID"] for player in round["players"] if player["teamIndex"] == 0
+                player["profileID"]
+                for player in round["players"]
+                if player["teamIndex"] == 0
             ]
             team_1_player_ids = [
-                player["profileID"] for player in round["players"] if player["teamIndex"] == 1
+                player["profileID"]
+                for player in round["players"]
+                if player["teamIndex"] == 1
             ]
             team_0_id = get_team_id_from_roster(team_0_player_ids)
             team_1_id = get_team_id_from_roster(team_1_player_ids)
@@ -267,13 +317,17 @@ def generate_rounds_table(data_dir: Path = DATA_DIR):
             # Add team-related info
             round_dict["team_0_id"] = team_0_id
             # TODO: Score is bugged
-            round_dict["team_0_score_before"] = round["teams"][0]["startingScore"]
+            round_dict["team_0_score_before"] = round["teams"][0][
+                "startingScore"
+            ]
             round_dict["team_0_score_after"] = round["teams"][0]["score"]
             round_dict["team_0_won_round"] = round["teams"][0]["won"]
             round_dict["team_0_side"] = round["teams"][0]["role"]
             round_dict["team_1_id"] = team_1_id
             # TODO: Score is bugged
-            round_dict["team_1_score_before"] = round["teams"][1]["startingScore"]
+            round_dict["team_1_score_before"] = round["teams"][1][
+                "startingScore"
+            ]
             round_dict["team_1_score_after"] = round["teams"][1]["score"]
             round_dict["team_1_won_round"] = round["teams"][1]["won"]
             round_dict["team_1_side"] = round["teams"][1]["role"]
@@ -316,19 +370,25 @@ def generate_rounds_table(data_dir: Path = DATA_DIR):
     round_data_df = pd.DataFrame()
     for match_json_path in Path(data_dir / "2_decoded_replays").rglob("*.json"):
         match_round_data_df = get_round_info(match_json_path)
-        round_data_df = pd.concat((round_data_df, match_round_data_df), ignore_index=True)
+        round_data_df = pd.concat(
+            (round_data_df, match_round_data_df), ignore_index=True
+        )
     return round_data_df
 
 
 def generate_kill_table(data_dir: Path = DATA_DIR):
     def get_kills(match_json_path: Path):
-        def get_operator_from_player_id(player_dicts: list[dict], player_id: str):
+        def get_operator_from_player_id(
+            player_dicts: list[dict], player_id: str
+        ):
             for player in player_dicts:
                 if player["profileID"] == player_id:
                     return player["operator"]["name"]
             return None
 
-        def get_spawn_location_from_player_id(player_dicts: list[dict], player_id: str):
+        def get_spawn_location_from_player_id(
+            player_dicts: list[dict], player_id: str
+        ):
             for player in player_dicts:
                 if player["profileID"] == player_id:
                     return player["spawn"]
@@ -358,8 +418,12 @@ def generate_kill_table(data_dir: Path = DATA_DIR):
                 if event["type"]["name"] != "Kill":
                     continue
 
-                killer_player_id = get_player_id_from_name(round, event["username"])
-                victim_player_id = get_player_id_from_name(round, event["target"])
+                killer_player_id = get_player_id_from_name(
+                    round, event["username"]
+                )
+                victim_player_id = get_player_id_from_name(
+                    round, event["target"]
+                )
 
                 kill = {
                     "match_id": match_id,
@@ -399,7 +463,8 @@ def generate_kill_table(data_dir: Path = DATA_DIR):
             for kill in round_kills:
                 for other_kill in round_kills:
                     if (
-                        other_kill["killer_id"] == kill["victim_id"]  # The victim later gets a kill
+                        other_kill["killer_id"]
+                        == kill["victim_id"]  # The victim later gets a kill
                         and 0
                         <= other_kill["time_seconds"] - kill["time_seconds"]
                         <= 10  # Within 10s
@@ -409,19 +474,25 @@ def generate_kill_table(data_dir: Path = DATA_DIR):
                         # Find the death event for the traded victim and mark it
                         for victim_kill in round_kills:
                             if (
-                                victim_kill["victim_id"] == other_kill["killer_id"]
+                                victim_kill["victim_id"]
+                                == other_kill["killer_id"]
                             ):  # The traded player
                                 other_kill["death_was_traded"] = True
 
-            kills.extend(round_kills)  # Append all processed kills for this round
+            kills.extend(
+                round_kills
+            )  # Append all processed kills for this round
 
         return pd.DataFrame(kills)
 
     kill_data_df = pd.DataFrame()
     for match_json_path in Path(data_dir / "2_decoded_replays").rglob("*.json"):
-        kill_data_df = pd.concat((kill_data_df, get_kills(match_json_path)), ignore_index=True)
+        kill_data_df = pd.concat(
+            (kill_data_df, get_kills(match_json_path)), ignore_index=True
+        )
     return kill_data_df.sort_values(
-        by=["match_id", "round_num", "time_seconds"], ascending=[True, True, False]
+        by=["match_id", "round_num", "time_seconds"],
+        ascending=[True, True, False],
     )
 
 
@@ -432,8 +503,12 @@ def update_op_bans(data_dir: Path = DATA_DIR):
         match_id = match_json.stem
         with open(match_json) as f:
             match_dict = json.load(f)
-            team_0_id, team_1_id = get_team_ids_from_round_dict(match_dict["rounds"][0])
-            op_bans_df.loc[(op_bans_df["match_id"] == match_id), ["team_0_id", "team_1_id"]] = (
+            team_0_id, team_1_id = get_team_ids_from_round_dict(
+                match_dict["rounds"][0]
+            )
+            op_bans_df.loc[
+                (op_bans_df["match_id"] == match_id), ["team_0_id", "team_1_id"]
+            ] = (
                 team_0_id,
                 team_1_id,
             )
@@ -467,16 +542,49 @@ def update_map_bans(data_dir: Path = DATA_DIR):
     for _, row in game_info_df.iterrows():
         game_id = row["game_id"]
         # If game is already in map bans or isn't a match, skip
-        if game_id in map_ban_df["game_id"].unique() or row["game_type"] == "scrim":
+        if (
+            game_id in map_ban_df["game_id"].unique()
+            or row["game_type"] == "scrim"
+        ):
             continue
 
         # Determine pick/ban order from game format
         game_format = row["format"]
-        pick_ban_order = ("ban", "ban", "ban", "ban", "pick", "pick", "ban", "ban", "pick")  # Bo3
+        pick_ban_order = (
+            "ban",
+            "ban",
+            "ban",
+            "ban",
+            "pick",
+            "pick",
+            "ban",
+            "ban",
+            "pick",
+        )  # Bo3
         if game_format == "Bo1":
-            pick_ban_order = ("ban", "ban", "ban", "ban", "ban", "ban", "ban", "ban", "pick")
+            pick_ban_order = (
+                "ban",
+                "ban",
+                "ban",
+                "ban",
+                "ban",
+                "ban",
+                "ban",
+                "ban",
+                "pick",
+            )
         elif game_format == "Bo5":
-            pick_ban_order = ("ban", "ban", "pick", "pick", "ban", "ban", "pick", "pick", "pick")
+            pick_ban_order = (
+                "ban",
+                "ban",
+                "pick",
+                "pick",
+                "ban",
+                "ban",
+                "pick",
+                "pick",
+                "pick",
+            )
 
         # Figure out which teams are playing
         match_id = literal_eval(row["match_ids"])[0]
@@ -485,7 +593,10 @@ def update_map_bans(data_dir: Path = DATA_DIR):
         ):  # There's only 1 match ID so no commma so no tuple so it gets parsed as string
             match_id = row["match_ids"].removeprefix("('").removesuffix("')")
         team_ids = list(get_team_ids_from_match_id(match_id))
-        team_names = [get_team_name_from_id(team_ids[0]), get_team_name_from_id(team_ids[1])]
+        team_names = [
+            get_team_name_from_id(team_ids[0]),
+            get_team_name_from_id(team_ids[1]),
+        ]
 
         # Ask user for info
         print(
@@ -522,7 +633,9 @@ def update_map_bans(data_dir: Path = DATA_DIR):
             selected_map = map_pool[0]
             if len(map_pool) > 1:
                 print(", ".join(map_pool))
-                response = input(f"{team_names[0]} {veto_type}: ").lower().strip()
+                response = (
+                    input(f"{team_names[0]} {veto_type}: ").lower().strip()
+                )
                 for map_name in map_pool:
                     if map_name.lower().startswith(response):
                         selected_map = map_name
@@ -536,7 +649,9 @@ def update_map_bans(data_dir: Path = DATA_DIR):
                 "veto_type": veto_type,
                 "map": selected_map,
             }
-            map_ban_df = pd.concat((map_ban_df, pd.DataFrame([veto_info])), ignore_index=True)
+            map_ban_df = pd.concat(
+                (map_ban_df, pd.DataFrame([veto_info])), ignore_index=True
+            )
 
             team_ids.reverse()
             team_names.reverse()
@@ -551,7 +666,9 @@ def check_for_unentered_games(data_dir: Path = DATA_DIR):
         if "," in game_match_ids:
             existing_match_ids.extend(list(literal_eval(game_match_ids)))
         else:
-            existing_match_ids.append(game_match_ids.replace("('", "").replace("')", ""))
+            existing_match_ids.append(
+                game_match_ids.replace("('", "").replace("')", "")
+            )
 
     # Find if there are any replays not added to game info csv
     missing_replays = []
@@ -589,10 +706,14 @@ def check_for_unentered_games(data_dir: Path = DATA_DIR):
         game_info_df.to_csv(data_dir / "3_tables/game_info.csv", index=False)
 
 
-def decode_matches(data_dir: Path = DATA_DIR, decoder_path: Path = DECODER_PATH):
+def decode_matches(
+    data_dir: Path = DATA_DIR, decoder_path: Path = DECODER_PATH
+):
     # Step 1: Extract the match zips
     zip_files = list((data_dir / "0_replay_zips").glob("*.zip"))
-    for match_zip in track(zip_files, description="Extracting match zips", total=len(zip_files)):
+    for match_zip in track(
+        zip_files, description="Extracting match zips", total=len(zip_files)
+    ):
         _extract_match_zip(match_zip)
 
     # Step 2: Decode the match folders
@@ -603,7 +724,11 @@ def decode_matches(data_dir: Path = DATA_DIR, decoder_path: Path = DECODER_PATH)
     )  # overestimate of 6 GB per thread
     with ThreadPoolExecutor(thread_count) as executor:
         for match_folder in match_folders:
-            futures.append(executor.submit(_decode_match_folder, match_folder, decoder_path))
+            futures.append(
+                executor.submit(
+                    _decode_match_folder, match_folder, decoder_path
+                )
+            )
         for future in track(
             as_completed(futures),
             total=len(futures),
