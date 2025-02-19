@@ -12,14 +12,7 @@ ROUND_DATA_CSV = Path(
     "/home/rjslater/Documents/Projects/UCR6-Stats-Bot/data/3_tables/round_data.csv"
 )
 TEAM_INFO_CSV = Path("/home/rjslater/Documents/Projects/UCR6-Stats-Bot/data/3_tables/teams.csv")
-OP_BAN_CSV = Path(r'C:\Users\ryanj\Documents\UCR6-Stats-Bot\data\3_tables\op_bans.csv')
-
-GAME_INFO_CSV = Path(r"C:\Users\ryanj\Documents\UCR6-Stats-Bot\data\3_tables\game_info.csv")
-KILL_DATA_CSV = Path(r"C:\Users\ryanj\Documents\UCR6-Stats-Bot\data\3_tables\kill_data.csv")
-PLAYER_INFO_CSV = Path(r"C:\Users\ryanj\Documents\UCR6-Stats-Bot\data\3_tables\player_info.csv")
-ROUND_DATA_CSV = Path(r"C:\Users\ryanj\Documents\UCR6-Stats-Bot\data\3_tables\round_data.csv")
-TEAM_INFO_CSV = Path(r"C:\Users\ryanj\Documents\UCR6-Stats-Bot\data\3_tables\teams.csv")
-OP_BAN_CSV = Path(r'C:\Users\ryanj\Documents\UCR6-Stats-Bot\data\3_tables\op_bans.csv')
+OP_BAN_CSV = Path("/home/rjslater/Documents/Projects/UCR6-Stats-Bot/data/3_tables/op_bans.csv")
 
 
 def get_team_id_from_name(team_name: str) -> int | None:

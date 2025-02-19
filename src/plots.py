@@ -28,7 +28,6 @@ from utils import (
 )
 
 PLOTS_DIR = Path("/home/rjslater/Documents/Projects/UCR6-Stats-Bot/plots")
-PLOTS_DIR = Path(r"C:\Users\ryanj\Documents\UCR6-Stats-Bot\plots")
 
 
 def plot_kds_over_match(match_id: str, team_id: int) -> plt.figure:
@@ -528,68 +527,74 @@ def radar_plot(categories: list[str], values: dict[str : list[int]]):
     else:
         plt.title(list(values.keys())[0])
 
-    plt.show()
+    return fig
 
 
 if __name__ == "__main__":
-    # team_id = get_team_id_from_name("UC Black")
-    team_id = get_team_id_from_name("CINCINNATI")
+    team_queries = ["UC Black", "CINCINNATI"]
 
-    radar_plot_data = {}
-    for player_id in get_player_ids_from_team_id(team_id):
-        player_name = get_player_name_from_id(player_id)
+    team_ids = [get_team_id_from_name(query) for query in team_queries]
+    for team_id in team_ids:
+        team_name = get_team_name_from_id(team_id)
 
-        # Player radar plot
-        print()
-        print(player_name)
-        kd = get_player_kd(player_id)
-        kpr = get_player_kpr(player_id)
-        srv = get_player_srv(player_id)
-        trade_kill_rate = get_player_trade_kill_rate(player_id)
-        traded_death_rate = get_player_traded_death_rate(player_id)
-        # TODO: add plant rate
-        print(f"{kd=}")
-        print(f"{kpr=}")
-        print(f"{srv=}")
-        print(f"{trade_kill_rate=}")
-        print(f"{traded_death_rate=}")
-        # radar_plot_data[player_name] = [kd, kpr, srv, trade_kill_rate, traded_death_rate]
-        radar_plot_data[player_name] = [kpr, srv, trade_kill_rate, traded_death_rate]
+        save_dir = Path(PLOTS_DIR / team_name)
+        save_dir.mkdir(exist_ok=True)
 
-        # fig = plot_player_engagement_timing(player_id)
-        # fig.savefig(PLOTS_DIR / f"engagement_timing-{player_name}.png")
+        radar_plot_data = {}
+        for player_id in get_player_ids_from_team_id(team_id):
+            player_name = get_player_name_from_id(player_id)
 
-        # death_counts, traded_death_rate, maps, time_bins = get_traded_death_engagement_data(
-        #     player_id, split_atk_def=True
-        # )
-        # plot_engagement_efficiency(
-        #     death_counts,
-        #     traded_death_rate,
-        #     maps,
-        #     time_bins,
-        #     title=f"Traded Death Rate - {player_name}",
-        #     legend_text="Color Legend:\nBlue = High trade rate\nGray = Mid trade rate\nRed = Low trade rate\n\nCircles: # deaths",
-        # ).savefig(PLOTS_DIR / f"traded_death_rates-{player_name}.png")
+            # === Player Radar Plot Data ===
+            kd = get_player_kd(player_id)
+            kpr = get_player_kpr(player_id)
+            srv = get_player_srv(player_id)
+            trade_kill_rate = get_player_trade_kill_rate(player_id)
+            traded_death_rate = get_player_traded_death_rate(player_id)
+            # TODO: add plant rate
+            # radar_plot_data[player_name] = [kd, kpr, srv, trade_kill_rate, traded_death_rate]
+            radar_plot_data[player_name] = [kpr, srv, trade_kill_rate, traded_death_rate]
 
-        # engagement_counts, engagement_winrate, maps, time_bins = get_engagement_data(
-        #     player_id, split_atk_def=True
-        # )
-        # fig = plot_engagement_efficiency(
-        #     engagement_counts,
-        #     engagement_winrate,
-        #     maps,
-        #     time_bins,
-        #     title=f"Engagement Efficiency - {player_name}",
-        # )
-        # fig.savefig(PLOTS_DIR / f"engagement_efficiency-{player_name}.png")
+            # === Engagement Timing Plot ===
+            fig = plot_player_engagement_timing(player_id)
+            fig.savefig(save_dir / f"engagement_timing-{player_name}.png")
 
-    # team_name = get_team_name_from_id(team_id)
-    # plot_team_engagement_timings(team_id).savefig(PLOTS_DIR / f"engagement_timing-{team_name}.png")
+            # === Traded Death Plot ===
+            death_counts, traded_death_rate, maps, time_bins = get_traded_death_engagement_data(
+                player_id, split_atk_def=True
+            )
+            plot_engagement_efficiency(
+                death_counts,
+                traded_death_rate,
+                maps,
+                time_bins,
+                title=f"Traded Death Rate - {player_name}",
+                legend_text="Color Legend:\nBlue = High trade rate\nGray = Mid trade rate\nRed = Low trade rate\n\nCircles: # deaths",
+            ).savefig(save_dir / f"traded_death_rates-{player_name}.png")
 
-    # radar_plot(["K/D", "KPR", "SRV", "Trade Kill Rate", "Trade Death Rate"], radar_plot_data)
-    radar_plot(["KPR", "SRV", "Trade Kill Rate", "Trade Death Rate"], radar_plot_data)
+            # === Engagement Efficiency Plot
+            engagement_counts, engagement_winrate, maps, time_bins = get_engagement_data(
+                player_id, split_atk_def=True
+            )
+            fig = plot_engagement_efficiency(
+                engagement_counts,
+                engagement_winrate,
+                maps,
+                time_bins,
+                title=f"Engagement Efficiency - {player_name}",
+            )
+            fig.savefig(save_dir / f"engagement_efficiency-{player_name}.png")
 
-    team_ids = [get_team_id_from_name("UC Black"), get_team_id_from_name("CINCINNATI")]
+        # === Team Engagement Timings ===
+        plot_team_engagement_timings(team_id).savefig(
+            save_dir / f"engagement_timing-{team_name}.png"
+        )
+
+        # === Team Radar Plot ===
+        # radar_plot(["K/D", "KPR", "SRV", "Trade Kill Rate", "Trade Death Rate"], radar_plot_data)
+        fig = radar_plot(["KPR", "SRV", "Trade Kill Rate", "Trade Death Rate"], radar_plot_data)
+        fig.savefig(save_dir / f"radar_plot-{team_name}.png")
+
+    # == FINAL SECTION FOR TEAM COMPARISON
     stats = {}
     for team_id in team_ids:
         team_name = get_team_name_from_id(team_id)
@@ -597,12 +602,8 @@ if __name__ == "__main__":
         def_winrate = get_team_winrate(team_id, side="Defense")[0]
         opening_kill_rate = get_team_opening_kill_rate(team_id)[0]
         stats[team_name] = [atk_winrate, def_winrate, opening_kill_rate]
-        print(team_name)
-        print(f"{atk_winrate=}")
-        print(f"{def_winrate=}")
-        print(f"{opening_kill_rate=}")
 
     radar_plot(
         ["ATK Win Rate %", "DEF Win Rate %", "Opening Kill %"],
         stats,
-    )  #     print(f"{opening_kill_rate=}")
+    ).savefig(PLOTS_DIR / "team_comparison.png")
