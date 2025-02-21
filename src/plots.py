@@ -7,10 +7,16 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from scipy.stats import zscore
 
 from stat_utils import (
+    get_player_entry_death_rate,
+    get_player_entry_kill_rate,
+    get_player_headshot_percentage,
     get_player_kd,
     get_player_kpr,
+    get_player_obj_rate,
+    get_player_rounds_played,
     get_player_srv,
     get_player_trade_kill_rate,
     get_player_traded_death_rate,
@@ -491,17 +497,36 @@ def plot_team_engagement_timings(team_id: int, map_name: str | None = None) -> p
     return fig
 
 
-def radar_plot(categories: list[str], values: dict[str : list[int]]):
+def radar_plot(
+    categories: list[str],
+    values: dict[str, list[float]],
+    normalize: bool = False,
+    title: str | None = None,
+):
     def add_ring(ax, ring_values, color="blue"):
         angles = np.linspace(0, 2 * np.pi, len(ring_values), endpoint=False).tolist()
         ring_values += ring_values[:1]
         angles += angles[:1]
-        ax.plot(angles, ring_values, color=color, linewidth=2, linestyle="solid")
-        # ax.plot(angles, ring_values, color=color, linewidth=2, linestyle="solid", marker="o")
+        ax.plot(angles, ring_values, color=color, linewidth=0.8, linestyle="solid")
+
+    # Convert values to a NumPy array for easier processing
+    data_matrix = np.array(list(values.values()))
+
+    # Normalize data using Z-score if enabled
+    if normalize:
+        data_matrix = np.apply_along_axis(zscore, 0, data_matrix)  # Normalize each column (stat)
+        # Shift min value to be >= 0 for plotting (Z-scores can be negative)
+        min_val = np.min(data_matrix)
+        if min_val < 0:
+            data_matrix -= min_val
+
+    # Convert back to a dictionary with the same keys
+    normalized_values = {key: list(data_matrix[i]) for i, key in enumerate(values.keys())}
 
     fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
     colors = sns.color_palette()
-    for color, (value_label, value_list) in zip(colors, values.items()):
+
+    for color, (value_label, value_list) in zip(colors, normalized_values.items()):
         add_ring(ax, value_list, color)
 
     ax.set_theta_offset(np.pi / 2)
@@ -511,21 +536,32 @@ def radar_plot(categories: list[str], values: dict[str : list[int]]):
     angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
     plt.xticks(angles, categories)
 
-    # Remove y ticks down to max needed to show all data
-    max_value = max(max(value_list) for value_list in values.values())
-    ticks = np.arange(0.25, max_value + 0.25, 0.25)
-
-    plt.yticks(
-        ticks,
-        [f"{t:>1}" for t in ticks],
-        color="grey",
-        size=8,
-    )
-    plt.ylim(0, ticks[-1])
-    if len(values.keys()):
-        plt.legend(values.keys())
+    # No y ticks if normalized data
+    if normalize:
+        ax.set_yticklabels([])
     else:
-        plt.title(list(values.keys())[0])
+        # Remove y ticks down to max needed to show all data
+        max_value = max(max(value_list) for value_list in normalized_values.values())
+        ticks = np.linspace(0, max_value, num=5)[1:]  # Avoid 0 tick since Z-score shifts values
+        plt.yticks(
+            ticks,
+            [f"{t:.2f}" for t in ticks],
+            color="grey",
+            size=8,
+        )
+        plt.ylim(0, max_value)
+
+    if normalize:
+        fig.subplots_adjust(right=0.75)
+        plt.legend(normalized_values.keys(), loc="upper right", bbox_to_anchor=(1.6, 1.1))
+    else:
+        plt.title(list(normalized_values.keys())[0])
+    if title is not None:
+        plt.title(title, pad=50)
+        if normalize:
+            plt.title(f"{title} (Normalized)", pad=50)
+
+    fig.tight_layout()
 
     return fig
 
@@ -545,18 +581,51 @@ if __name__ == "__main__":
             player_name = get_player_name_from_id(player_id)
 
             # === Player Radar Plot Data ===
-            kd = get_player_kd(player_id)
-            kpr = get_player_kpr(player_id)
-            srv = get_player_srv(player_id)
-            trade_kill_rate = get_player_trade_kill_rate(player_id)
-            traded_death_rate = get_player_traded_death_rate(player_id)
-            # TODO: add plant rate
-            # radar_plot_data[player_name] = [kd, kpr, srv, trade_kill_rate, traded_death_rate]
-            radar_plot_data[player_name] = [kpr, srv, trade_kill_rate, traded_death_rate]
+            if get_player_rounds_played(player_id) >= 30:
+                kd = get_player_kd(player_id)
+                kpr = get_player_kpr(player_id)
+                srv = get_player_srv(player_id)
+                trade_kill_rate = get_player_trade_kill_rate(player_id)
+                traded_death_rate = get_player_traded_death_rate(player_id)
+                entry_kill_rate = get_player_entry_kill_rate(player_id)
+                entry_death_rate = get_player_entry_death_rate(player_id)
+                obj_rate = get_player_obj_rate(player_id)
+                headshot = get_player_headshot_percentage(player_id) / 100
+                radar_plot_categories = [
+                    "Entry K",
+                    "Entry D",
+                    "HS %",
+                    "K/D",
+                    "KPR",
+                    "SRV",
+                    "Trade K",
+                    "Trade D",
+                    "OBJ",
+                ]
+                radar_plot_data[player_name] = [
+                    entry_kill_rate,
+                    entry_death_rate,
+                    headshot,
+                    kd,
+                    kpr,
+                    srv,
+                    trade_kill_rate,
+                    traded_death_rate,
+                    obj_rate,
+                ]
+                # radar_plot_data[player_name] = [kpr, srv, trade_kill_rate, traded_death_rate]
+                fig = radar_plot(
+                    radar_plot_categories,
+                    {player_name: radar_plot_data[player_name]},
+                    title=player_name,
+                )
+                fig.savefig(save_dir / f"radar_plot-{player_name}.png")
+                plt.close()
 
             # === Engagement Timing Plot ===
             fig = plot_player_engagement_timing(player_id)
             fig.savefig(save_dir / f"engagement_timing-{player_name}.png")
+            plt.close()
 
             # === Traded Death Plot ===
             death_counts, traded_death_rate, maps, time_bins = get_traded_death_engagement_data(
@@ -570,6 +639,7 @@ if __name__ == "__main__":
                 title=f"Traded Death Rate - {player_name}",
                 legend_text="Color Legend:\nBlue = High trade rate\nGray = Mid trade rate\nRed = Low trade rate\n\nCircles: # deaths",
             ).savefig(save_dir / f"traded_death_rates-{player_name}.png")
+            plt.close()
 
             # === Engagement Efficiency Plot
             engagement_counts, engagement_winrate, maps, time_bins = get_engagement_data(
@@ -583,6 +653,7 @@ if __name__ == "__main__":
                 title=f"Engagement Efficiency - {player_name}",
             )
             fig.savefig(save_dir / f"engagement_efficiency-{player_name}.png")
+            plt.close()
 
         # === Team Engagement Timings ===
         plot_team_engagement_timings(team_id).savefig(
@@ -590,9 +661,25 @@ if __name__ == "__main__":
         )
 
         # === Team Radar Plot ===
-        # radar_plot(["K/D", "KPR", "SRV", "Trade Kill Rate", "Trade Death Rate"], radar_plot_data)
-        fig = radar_plot(["KPR", "SRV", "Trade Kill Rate", "Trade Death Rate"], radar_plot_data)
+        fig = radar_plot(
+            # ["KPR", "SRV", "Trade Kill Rate", "Trade Death Rate"],
+            radar_plot_categories,
+            radar_plot_data,
+            normalize=True,
+            title=f"{team_name} - Stats",
+        )
         fig.savefig(save_dir / f"radar_plot-{team_name}.png")
+        plt.close()
+        for player, data in radar_plot_data.items():
+            print(player)
+            for data_type, data_value in zip(radar_plot_categories, data):
+                print(f"  {data_type}: {round(data_value, 2)}")
+
+        # Save radar stats as CSV
+        df = pd.DataFrame.from_dict(radar_plot_data, orient="index", columns=radar_plot_categories)
+        df.reset_index(inplace=True)
+        df.rename(columns={"index": "Name"}, inplace=True)
+        df.to_csv(save_dir / f"{team_name}_stats.csv", index=False)
 
     # == FINAL SECTION FOR TEAM COMPARISON
     stats = {}

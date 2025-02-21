@@ -13,6 +13,7 @@ ROUND_DATA_CSV = Path(
 )
 TEAM_INFO_CSV = Path("/home/rjslater/Documents/Projects/UCR6-Stats-Bot/data/3_tables/teams.csv")
 OP_BAN_CSV = Path("/home/rjslater/Documents/Projects/UCR6-Stats-Bot/data/3_tables/op_bans.csv")
+OBJ_DATA_CSV = Path("/home/rjslater/Documents/Projects/UCR6-Stats-Bot/data/3_tables/obj_data.csv")
 
 
 def get_team_id_from_name(team_name: str) -> int | None:
